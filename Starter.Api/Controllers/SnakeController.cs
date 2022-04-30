@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Starter.Api.Requests;
 using Starter.Api.Responses;
 using Starter.Core;
+using System.Linq;
 
 namespace Starter.Api.Controllers
 {
@@ -19,7 +20,7 @@ namespace Starter.Api.Controllers
         [HttpGet("")]
         public IActionResult Index()
         {
-
+            
             var response = new InitResponse
             {
                 ApiVersion = "1",
@@ -41,7 +42,6 @@ namespace Starter.Api.Controllers
         [HttpPost("start")]
         public IActionResult Start(GameStatusRequest gameStatusRequest)
         {
-
             return Ok();
         }
 
@@ -54,23 +54,19 @@ namespace Starter.Api.Controllers
         [HttpPost("move")]
         public IActionResult Move(GameStatusRequest gameStatusRequest)
         {
-            var rng = new Random();
-            var direction = new List<string>();
+            Random rng = new Random();
+            List<string> direction = new List<string>();
+
 
             Point head = gameStatusRequest.You.Head;
-            List<Point> entireBody = (List<Point>)gameStatusRequest.You.Body;
-            Point body = entireBody[1];
             Board board = gameStatusRequest.Board;
+            List<Point> body = gameStatusRequest.You.Body.ToList();
 
-            if (body.Y < head.Y && head.Y < board.Height) { direction.Add("up"); }
-            if (body.X < head.X && head.X > 0) { direction.Add("left"); }
-            if (body.X > head.X && head.X < board.Width) { direction.Add("right"); }
-            if (body.Y > head.Y && head.Y > 0) { direction.Add("down"); }//*/
-
-            foreach(string dir in direction)
-            {
-                Console.WriteLine(dir);
-            }
+            
+            if (head.Y < board.Height - 1 && !(body[1].Y > head.Y)) { direction.Add("up"); }
+            if (head.X > 0 && !(body[1].X < head.X)) { direction.Add("left"); }
+            if (head.X < board.Width - 1 && !(body[1].X > head.X)) { direction.Add("right"); }
+            if (head.Y > 0 && !(body[1].Y < head.Y)) { direction.Add("down"); }
 
             var response = new MoveResponse
             {
