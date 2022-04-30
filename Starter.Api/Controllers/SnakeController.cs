@@ -7,6 +7,8 @@ using Starter.Core;
 
 namespace Starter.Api.Controllers
 {
+
+
     [ApiController]
     public class SnakeController : ControllerBase
     {
@@ -17,13 +19,14 @@ namespace Starter.Api.Controllers
         [HttpGet("")]
         public IActionResult Index()
         {
+
             var response = new InitResponse
             {
                 ApiVersion = "1",
-                Author = "",
-                Color = "#FFFFFF",
-                Head = "default",
-                Tail = "default"
+                Author = "S. Espinoza, R. Sepulveda",
+                Color = "#4C89C8",
+                Head = "fang",
+                Tail = "bolt"
             };
 
             return Ok(response);
@@ -38,6 +41,7 @@ namespace Starter.Api.Controllers
         [HttpPost("start")]
         public IActionResult Start(GameStatusRequest gameStatusRequest)
         {
+
             return Ok();
         }
 
@@ -50,15 +54,32 @@ namespace Starter.Api.Controllers
         [HttpPost("move")]
         public IActionResult Move(GameStatusRequest gameStatusRequest)
         {
-            var direction = new List<string> {"down", "left", "right", "up"};
             var rng = new Random();
+            var direction = new List<string>();
+
+            Point head = gameStatusRequest.You.Head;
+            List<Point> entireBody = (List<Point>)gameStatusRequest.You.Body;
+            Point body = entireBody[1];
+            Board board = gameStatusRequest.Board;
+
+            if (body.Y < head.Y && head.Y < board.Height) { direction.Add("up"); }
+            if (body.X < head.X && head.X > 0) { direction.Add("left"); }
+            if (body.X > head.X && head.X < board.Width) { direction.Add("right"); }
+            if (body.Y > head.Y && head.Y > 0) { direction.Add("down"); }//*/
+
+            foreach(string dir in direction)
+            {
+                Console.WriteLine(dir);
+            }
 
             var response = new MoveResponse
             {
                 Move = direction[rng.Next(direction.Count)],
                 Shout = "I am moving!"
             };
+
             return Ok(response);
+
         }
 
 
