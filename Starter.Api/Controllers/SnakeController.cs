@@ -39,38 +39,18 @@ namespace Starter.Api.Controllers
         /// Every game has a unique ID that can be used to allocate resources or data you may need.
         /// Your response to this request will be ignored.
         /// </summary>
-        [HttpPost("start")]
-        public IActionResult Start(GameStatusRequest gameStatusRequest)
-        {
-            return Ok();
-        }
-
-
-        /// <summary>
-        /// This request will be sent for every turn of the game.
-        /// Use the information provided to determine how your
-        /// Battlesnake will move on that turn, either up, down, left, or right.
-        /// </summary>
         [HttpPost("move")]
         public IActionResult Move(GameStatusRequest gameStatusRequest)
         {
             Random rng = new Random();
-            List<string> direction = new List<string>();
+            List<string> direction = GetDirections(gameStatusRequest);
 
 
-            Point head = gameStatusRequest.You.Head;
-            Board board = gameStatusRequest.Board;
-            List<Point> body = gameStatusRequest.You.Body.ToList();
-
-            
-            if (head.Y < board.Height - 1 && !(body[1].Y > head.Y)) { direction.Add("up"); }
-            if (head.X > 0 && !(body[1].X < head.X)) { direction.Add("left"); }
-            if (head.X < board.Width - 1 && !(body[1].X > head.X)) { direction.Add("right"); }
-            if (head.Y > 0 && !(body[1].Y < head.Y)) { direction.Add("down"); }
-
+            System.Diagnostics.Trace.TraceInformation("Moviendo left");
             var response = new MoveResponse
             {
-                Move = direction[rng.Next(direction.Count)],
+                Move = "left",
+                //Move = direction[rng.Next(direction.Count)],
                 Shout = "I am moving!"
             };
 
@@ -88,6 +68,82 @@ namespace Starter.Api.Controllers
         public IActionResult End(GameStatusRequest gameStatusRequest)
         {
             return Ok();
+        }
+
+
+        private List<string> GetDirections(GameStatusRequest gameStatusRequest)
+        {
+            List<string> direction = new List<string>();
+
+            Point head = gameStatusRequest.You.Head;
+            Board board = gameStatusRequest.Board;
+            //List<Point> body = gameStatusRequest.You.Body.ToList();
+            List<Point> allBodies = new List<Point>();
+
+            List<Snake> snakes = gameStatusRequest.Board.Snakes.ToList();
+            foreach (Snake snake in snakes)
+            {
+                List<Point> body = snake.Body.ToList();
+                allBodies.AddRange(body);
+            }
+
+            if (head.Y < board.Height - 1)
+            {
+                bool acceptable = true;
+                foreach (Point bodyPart in allBodies)
+                {
+                    if (bodyPart.Y == head.Y + 1 && bodyPart.X == head.X)
+                    {
+                        acceptable = false;
+                        break;
+                    }
+                }
+                if (acceptable) { direction.Add("up"); }
+            }
+
+            if (head.X > 0)
+            {
+                bool acceptable = true;
+                foreach (Point bodyPart in allBodies)
+                {
+                    if (bodyPart.X == head.X - 1 && bodyPart.Y == head.Y)
+                    {
+                        acceptable = false;
+                        break;
+                    }
+                }
+                if (acceptable) { direction.Add("left"); }
+            }
+
+            if (head.X < board.Width - 1)
+            {
+                bool acceptable = true;
+                foreach (Point bodyPart in allBodies)
+                {
+                    if (bodyPart.X == head.X + 1 && bodyPart.Y == head.Y)
+                    {
+                        acceptable = false;
+                        break;
+                    }
+                }
+                if (acceptable) { direction.Add("right"); }
+            }
+
+            if (head.Y > 0)
+            {
+                bool acceptable = true;
+                foreach (Point bodyPart in allBodies)
+                {
+                    if (bodyPart.Y == head.Y - 1 && bodyPart.X == head.X)
+                    {
+                        acceptable = false;
+                        break;
+                    }
+                }
+                if (acceptable) { direction.Add("down"); }
+            }
+
+            return direction;
         }
     }
 }
