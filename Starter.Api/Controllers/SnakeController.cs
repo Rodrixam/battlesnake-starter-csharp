@@ -8,7 +8,19 @@ using System.Linq;
 
 namespace Starter.Api.Controllers
 {
+    private struct Node
+    {
+        public Node(Point point, int f, Point parent)
+        {
+            Cords = point;
+            F = f;
+            Parent = parent;
+        }
 
+        public Point Cords;
+        public int F;
+        public Point Parent;
+    }
 
     [ApiController]
     public class SnakeController : ControllerBase
@@ -20,7 +32,7 @@ namespace Starter.Api.Controllers
         [HttpGet("")]
         public IActionResult Index()
         {
-            
+
             var response = new InitResponse
             {
                 ApiVersion = "1",
@@ -42,16 +54,18 @@ namespace Starter.Api.Controllers
         [HttpPost("move")]
         public IActionResult Move(GameStatusRequest gameStatusRequest)
         {
-            Random rng = new Random();
-            List<string> direction = GetDirections(gameStatusRequest);
+            //Random rng = new Random();
+            //A* por la comida
+            Node nextMoveNode = AStarFoodSetUp();
+            //Convertir a movimiento
+            Point nextMove = nextMoveNode.Cords;
+            string move = CalcMove(head, nextMove);
 
-
-            System.Diagnostics.Trace.TraceInformation("Moviendo left");
             var response = new MoveResponse
             {
-                Move = "left",
-                //Move = direction[rng.Next(direction.Count)],
-                Shout = "I am moving!"
+                //Move = direction[rng.Next(direction.Count)]
+                Move = move,
+                Shout = "racial slur"
             };
 
             return Ok(response);
@@ -70,80 +84,150 @@ namespace Starter.Api.Controllers
             return Ok();
         }
 
-
-        private List<string> GetDirections(GameStatusRequest gameStatusRequest)
+        private Node AStarFoodSetUp(GameStatusRequest gameStatusRequest, Point head)
         {
-            List<string> direction = new List<string>();
-
-            Point head = gameStatusRequest.You.Head;
-            Board board = gameStatusRequest.Board;
-            //List<Point> body = gameStatusRequest.You.Body.ToList();
-            List<Point> allBodies = new List<Point>();
-
+            //Iniciar Listas
             List<Snake> snakes = gameStatusRequest.Board.Snakes.ToList();
+            List<Point> foods = gameStatusRequest.Board.Food.ToList();
+
+            //Crea matriz de obstáculos
+            int height = gameStatusRequest.Board.Height;
+            int width = gameStatusRequest.Board.Width;
+            bool[,] obstacles = new bool[height, width];
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    obstacles[i][j] = false;
+                }
+            }
+
+            //Llenar matriz
             foreach (Snake snake in snakes)
             {
                 List<Point> body = snake.Body.ToList();
-                allBodies.AddRange(body);
+                foreach (Point point in body)
+                {
+                    obstacles[height - body.Y][body.X] = true;
+                }
             }
 
-            if (head.Y < board.Height - 1)
+            //Iniciar el A* para cada comida en el tablero
+            int lenght = 10000;
+            List<Node> truePath = null;
+            List<Node> path;
+            foreach (Point food in foods)
             {
-                bool acceptable = true;
-                foreach (Point bodyPart in allBodies)
+                path = AStar(head, food, obstacles, height);
+
+                //Descartar caminos imposibles
+                if (path == null) continue;
+
+                //Buscar la comida más cercana
+                if (path.Count < lenght)
                 {
-                    if (bodyPart.Y == head.Y + 1 && bodyPart.X == head.X)
+                    lenght = path.Count;
+                    truePath = path;
+                }
+            }
+
+            return truePath[0];
+        }
+
+        private List<Node> AStar(point begin, Point end, bool[,] obstacles, int height)
+        {
+            List<Node> Open = new List<Node>();
+            List<Point> Closed = new List<Point>();
+            List<Node> Path = new List<Node>();
+            int g = 0;
+            int h = DistEst(begin, end);
+            int f = g + h;
+            Open.Add(new Node(begin, f, null));
+            g++;
+            while (Open.Count > 0)
+            {
+                Node node = Open[0];
+                Open.RemoveAt(0);
+                if (node.Cords == end)
+                {
+                    //Success
+                    Path.Insert(Path.Count, node);
+                    return Path;
+                }
+                List<Point> children = GetChildren();
+                foreach (Point child in children)
+                {
+                    if (Closed.Exists(child))
                     {
-                        acceptable = false;
-                        break;
+                        continue;
+                    }
+
+                    if (!obstacles[height - child.Y, child.X])
+                    {
+                        h = DistEst(child, end);
+                        f = g + h;
+                        if (Open.Count == 0)
+                        {
+                            Open.Add(new Node(child, f, node));
+                        }
+                        else
+                        {
+                            for (int i = 0; i < Open.Count; i++)
+                            {
+                                if (Open[i].F > f)
+                                {
+                                    Open.Insert(i, new Node(child, f, node));
+                                }
+                            }
+                        }
                     }
                 }
-                if (acceptable) { direction.Add("up"); }
+                Closed.Add(node.Cords);
             }
 
-            if (head.X > 0)
+            //failure
+            return null;
+        }
+
+        private int DistEst(Point begin, Point end)
+        {
+            int x = begin.X - end.X;
+            x = Math.Abs(x);
+            int y = begin.Y - end.Y;
+            y = Math.Abs(y);
+            return x + y;
+        }
+
+        private List<Point> GetChildren(Point point)
+        {
+            List<Point> children = new List<Point>();
+            children.add(new Point(point.X + 1, point.Y));
+            children.add(new Point(point.X - 1, point.Y));
+            children.add(new Point(point.X, point.Y + 1));
+            children.add(new Point(point.X, point.Y - 1));
+            return children;
+        }
+
+        private string CalcMove(Point begin, Point end)
+        {
+            string move = null;
+            if (begin.Y < end.Y)
             {
-                bool acceptable = true;
-                foreach (Point bodyPart in allBodies)
-                {
-                    if (bodyPart.X == head.X - 1 && bodyPart.Y == head.Y)
-                    {
-                        acceptable = false;
-                        break;
-                    }
-                }
-                if (acceptable) { direction.Add("left"); }
+                move = "up";
             }
-
-            if (head.X < board.Width - 1)
+            else if (begin.Y > end.Y)
             {
-                bool acceptable = true;
-                foreach (Point bodyPart in allBodies)
-                {
-                    if (bodyPart.X == head.X + 1 && bodyPart.Y == head.Y)
-                    {
-                        acceptable = false;
-                        break;
-                    }
-                }
-                if (acceptable) { direction.Add("right"); }
+                move = "down";
             }
-
-            if (head.Y > 0)
+            else if (begin.X < end.X)
             {
-                bool acceptable = true;
-                foreach (Point bodyPart in allBodies)
-                {
-                    if (bodyPart.Y == head.Y - 1 && bodyPart.X == head.X)
-                    {
-                        acceptable = false;
-                        break;
-                    }
-                }
-                if (acceptable) { direction.Add("down"); }
+                move = "right";
             }
-
-            return direction;
+            else if (begin.X > end.X)
+            {
+                move = "left";
+            }
+            return move;
         }
     }
 }
