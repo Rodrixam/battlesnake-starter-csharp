@@ -8,9 +8,9 @@ using System.Linq;
 
 namespace Starter.Api.Controllers
 {
-    private struct Node
+    class Node
     {
-        public Node(Point point, int f, Point parent)
+        public Node(Point point, int f, Node parent)
         {
             Cords = point;
             F = f;
@@ -19,7 +19,7 @@ namespace Starter.Api.Controllers
 
         public Point Cords;
         public int F;
-        public Point Parent;
+        public Node Parent;
     }
 
     [ApiController]
@@ -56,7 +56,8 @@ namespace Starter.Api.Controllers
         {
             //Random rng = new Random();
             //A* por la comida
-            Node nextMoveNode = AStarFoodSetUp();
+            Point head = gameStatusRequest.You.Body.ToList()[0];
+            Node nextMoveNode = AStarFoodSetUp(gameStatusRequest, head);
             //Convertir a movimiento
             Point nextMove = nextMoveNode.Cords;
             string move = CalcMove(head, nextMove);
@@ -98,7 +99,7 @@ namespace Starter.Api.Controllers
             {
                 for (int j = 0; j < width; j++)
                 {
-                    obstacles[i][j] = false;
+                    obstacles[i,j] = false;
                 }
             }
 
@@ -108,7 +109,7 @@ namespace Starter.Api.Controllers
                 List<Point> body = snake.Body.ToList();
                 foreach (Point point in body)
                 {
-                    obstacles[height - body.Y][body.X] = true;
+                    obstacles[height - point.Y,point.X] = true;
                 }
             }
 
@@ -134,7 +135,7 @@ namespace Starter.Api.Controllers
             return truePath[0];
         }
 
-        private List<Node> AStar(point begin, Point end, bool[,] obstacles, int height)
+        private List<Node> AStar(Point begin, Point end, bool[,] obstacles, int height)
         {
             List<Node> Open = new List<Node>();
             List<Point> Closed = new List<Point>();
@@ -154,10 +155,10 @@ namespace Starter.Api.Controllers
                     Path.Insert(Path.Count, node);
                     return Path;
                 }
-                List<Point> children = GetChildren();
+                List<Point> children = GetChildren(node.Cords);
                 foreach (Point child in children)
                 {
-                    if (Closed.Exists(child))
+                    if (Closed.Exists(x => x.X == child.X && x.Y == child.Y))
                     {
                         continue;
                     }
@@ -201,10 +202,10 @@ namespace Starter.Api.Controllers
         private List<Point> GetChildren(Point point)
         {
             List<Point> children = new List<Point>();
-            children.add(new Point(point.X + 1, point.Y));
-            children.add(new Point(point.X - 1, point.Y));
-            children.add(new Point(point.X, point.Y + 1));
-            children.add(new Point(point.X, point.Y - 1));
+            children.Add(new Point(point.X + 1, point.Y));
+            children.Add(new Point(point.X - 1, point.Y));
+            children.Add(new Point(point.X, point.Y + 1));
+            children.Add(new Point(point.X, point.Y - 1));
             return children;
         }
 
